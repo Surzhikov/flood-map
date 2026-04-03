@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type mapboxgl from 'mapbox-gl';
-import type { CustomLayerInterface } from 'mapbox-gl';
+import type { Map as MapboxMap, CustomLayerInterface } from 'mapbox-gl';
 import { decodeElevation } from '../utils/terrainRgb';
 import { fetchTile, getCachedTile, clearCache } from '../utils/tileCache';
 
@@ -58,7 +57,7 @@ function buildFloodTexture(imgData: ImageData, level: number): Uint8Array {
 }
 
 export function useFloodLayer(
-  map: mapboxgl.Map | null,
+  map: MapboxMap | null,
   floodLevel: number,
 ) {
   const floodLevelRef = useRef(floodLevel);
@@ -90,11 +89,11 @@ export function useFloodLayer(
     function getVisibleTiles(): Array<{ z: number; x: number; y: number }> {
       const zoom = Math.floor(map!.getZoom());
       const z = Math.min(Math.max(zoom, 2), 14);
-      const bounds = map!.getBounds();
+      const bounds = map!.getBounds()!;
       const n = Math.pow(2, z);
 
-      const xMin = Math.max(0, Math.floor(((bounds.getWest() + 180) / 360) * n));
-      const xMax = Math.min(n - 1, Math.floor(((bounds.getEast() + 180) / 360) * n));
+      const xMin = Math.max(0, Math.floor(((bounds!.getWest() + 180) / 360) * n));
+      const xMax = Math.min(n - 1, Math.floor(((bounds!.getEast() + 180) / 360) * n));
 
       function lat2tile(lat: number) {
         const rad = (lat * Math.PI) / 180;
@@ -103,8 +102,8 @@ export function useFloodLayer(
         );
       }
 
-      const yMin = Math.max(0, lat2tile(Math.min(bounds.getNorth(), 85.05)));
-      const yMax = Math.min(n - 1, lat2tile(Math.max(bounds.getSouth(), -85.05)));
+      const yMin = Math.max(0, lat2tile(Math.min(bounds!.getNorth(), 85.05)));
+      const yMax = Math.min(n - 1, lat2tile(Math.max(bounds!.getSouth(), -85.05)));
 
       const tiles: Array<{ z: number; x: number; y: number }> = [];
       for (let x = xMin; x <= xMax; x++) {
@@ -139,7 +138,7 @@ export function useFloodLayer(
       type: 'custom',
       renderingMode: '2d',
 
-      onAdd(_map: mapboxgl.Map, gl: WebGLRenderingContext) {
+      onAdd(_map: MapboxMap, gl: WebGLRenderingContext) {
         program = createProgram(gl);
         aPos = gl.getAttribLocation(program, 'a_pos');
         aTexCoord = gl.getAttribLocation(program, 'a_texCoord');
@@ -224,7 +223,7 @@ export function useFloodLayer(
         }
       },
 
-      onRemove(_map: mapboxgl.Map, gl: WebGLRenderingContext) {
+      onRemove(_map: MapboxMap, gl: WebGLRenderingContext) {
         if (program) gl.deleteProgram(program);
         if (posBuf) gl.deleteBuffer(posBuf);
         if (texBuf) gl.deleteBuffer(texBuf);
@@ -236,9 +235,9 @@ export function useFloodLayer(
     };
 
     function addLayer() {
-      if (map.getLayer('flood-overlay')) return;
+      if (map!.getLayer('flood-overlay')) return;
 
-      const layers = map.getStyle().layers;
+      const layers = map!.getStyle().layers;
       let beforeId: string | undefined;
       if (layers) {
         for (const l of layers) {
@@ -249,7 +248,7 @@ export function useFloodLayer(
         }
       }
 
-      map.addLayer(floodLayer, beforeId);
+      map!.addLayer(floodLayer, beforeId);
     }
 
     if (map.isStyleLoaded()) {
@@ -260,8 +259,8 @@ export function useFloodLayer(
 
     return () => {
       abort.abort();
-      if (map.getLayer('flood-overlay')) {
-        map.removeLayer('flood-overlay');
+      if (map!.getLayer('flood-overlay')) {
+        map!.removeLayer('flood-overlay');
       }
       clearCache();
     };
